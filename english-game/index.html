@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#7c5cff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Dodo 的英语冒险岛 · Dodo's English Island</title>
+<style>
+  :root {
+    --purple: #7c5cff;
+    --pink: #ff6fae;
+    --yellow: #ffd23f;
+    --green: #2ecc71;
+    --red: #ff5a5f;
+    --ink: #2d2a4a;
+    --soft: #f5f3ff;
+    --theme1: #8ec5ff;
+    --theme2: #e0c3fc;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(160deg, var(--theme1), var(--theme2));
+    transition: background .6s;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+  #app { max-width: 480px; height: 100%; margin: 0 auto; position: relative; }
+  .screen {
+    position: absolute; inset: 0; display: none; flex-direction: column;
+    padding: max(14px, env(safe-area-inset-top)) 16px max(14px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  .screen.active { display: flex; animation: fadeIn .35s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .pet { font-size: 64px; line-height: 1; display: inline-block; filter: drop-shadow(0 6px 6px rgba(0,0,0,.15)); }
+  .pet.idle { animation: float 2.6s ease-in-out infinite; }
+  .pet.talking { animation: talk .35s ease-in-out infinite alternate; }
+  .pet.jump { animation: jump .6s ease; }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  @keyframes talk { from { transform: scale(1) rotate(-3deg); } to { transform: scale(1.08) rotate(3deg); } }
+  @keyframes jump { 0% { transform: translateY(0); } 40% { transform: translateY(-30px) scale(1.1); } 100% { transform: translateY(0); } }
+
+  /* ---------- start ---------- */
+  #screen-start { align-items: center; justify-content: center; text-align: center; gap: 10px; }
+  #screen-start .pet { font-size: 120px; }
+  #screen-start h1 { margin: 8px 0 0; font-size: 30px; color: #fff; text-shadow: 0 3px 0 var(--purple), 0 6px 14px rgba(0,0,0,.2); }
+  #screen-start h2 { margin: 0; font-size: 17px; color: #fff; opacity: .95; font-weight: 600; }
+  .big-btn {
+    margin-top: 22px; padding: 18px 44px; border-radius: 999px; font-size: 22px; font-weight: 800; color: #fff;
+    background: linear-gradient(180deg, #ff8cc0, var(--pink)); box-shadow: 0 6px 0 #d94a8c, 0 12px 24px rgba(0,0,0,.18);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  .big-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #d94a8c; }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  .parent-note { margin-top: 26px; font-size: 12.5px; color: #fff; opacity: .9; line-height: 1.7; max-width: 340px; }
+
+  /* ---------- map ---------- */
+  .top-row { display: flex; align-items: center; gap: 10px; }
+  .pet-card {
+    flex: 1; display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.9);
+    border-radius: 22px; padding: 12px 14px; box-shadow: 0 6px 18px rgba(0,0,0,.08);
+  }
+  .pet-card .pet { font-size: 56px; cursor: pointer; }
+  .pet-info { flex: 1; min-width: 0; }
+  .pet-info b { font-size: 18px; }
+  .pet-info .stage { font-size: 13px; color: #6b678f; margin: 2px 0 6px; }
+  .bar { height: 10px; border-radius: 99px; background: #ece9ff; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--yellow), #ff9f1c); border-radius: 99px; transition: width .8s; }
+  .pet-info small { display: block; margin-top: 5px; font-size: 11.5px; color: #8a86ad; }
+  .coins { font-weight: 800; font-size: 18px; background: #fff; border-radius: 999px; padding: 8px 12px; box-shadow: 0 4px 12px rgba(0,0,0,.08); white-space: nowrap; }
+  .coins.bump { animation: bump .5s ease; }
+  @keyframes bump { 50% { transform: scale(1.3); } }
+  .icon-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.9); font-size: 20px; box-shadow: 0 4px 12px rgba(0,0,0,.08); flex: none; }
+  .pet-tip { text-align: center; color: #fff; font-size: 13px; margin: 10px 0 4px; text-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  .levels { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; padding-bottom: 20px; }
+  .level {
+    display: flex; align-items: center; gap: 14px; text-align: left; width: 100%;
+    background: #fff; border-radius: 22px; padding: 14px 16px; box-shadow: 0 6px 0 rgba(0,0,0,.08);
+    transition: transform .1s;
+  }
+  .level:active { transform: scale(.98); }
+  .level .ico { width: 58px; height: 58px; border-radius: 18px; display: grid; place-items: center; font-size: 34px; flex: none; }
+  .level .txt { flex: 1; }
+  .level .en { font-size: 18px; font-weight: 800; }
+  .level .cn { font-size: 13px; color: #8a86ad; margin-top: 2px; }
+  .level .st { font-size: 18px; letter-spacing: 2px; }
+  .level.locked { opacity: .55; filter: grayscale(.8); }
+
+  /* ---------- game ---------- */
+  .game-top { display: flex; align-items: center; gap: 10px; }
+  .dots { flex: 1; display: flex; gap: 6px; justify-content: center; }
+  .dots i { width: 22px; height: 8px; border-radius: 99px; background: rgba(255,255,255,.55); transition: all .3s; }
+  .dots i.done { background: var(--yellow); }
+  .dots i.now { background: #fff; width: 34px; }
+  .scene { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: 10px; }
+  .scene-deco { position: absolute; top: 0; right: 4px; font-size: 40px; opacity: .35; pointer-events: none; }
+  .bubble {
+    position: relative; z-index: 2; background: #fff; border-radius: 22px; padding: 14px 18px; font-size: 20px; font-weight: 700;
+    line-height: 1.4; text-align: center; min-height: 56px; max-width: 100%; box-shadow: 0 6px 18px rgba(0,0,0,.08);
+  }
+  .bubble::after { content: ""; position: absolute; left: 50%; bottom: -12px; margin-left: -12px; border: 12px solid transparent; border-top-color: #fff; border-bottom: 0; }
+  .bubble.mystery { color: var(--purple); letter-spacing: 1px; }
+  .scene .pet { font-size: 86px; margin-top: 12px; cursor: pointer; }
+  .replay { display: flex; gap: 10px; margin-top: 6px; }
+  .pill { background: rgba(255,255,255,.92); border-radius: 999px; padding: 9px 16px; font-size: 15px; font-weight: 700; box-shadow: 0 4px 10px rgba(0,0,0,.08); }
+  .pill:active { transform: scale(.95); }
+  #stage-area { margin-top: 16px; flex: 1; display: flex; flex-direction: column; }
+
+  .options { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .opt {
+    background: #fff; border-radius: 24px; aspect-ratio: 1 / .82; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 0 7px 0 rgba(0,0,0,.09); transition: transform .12s, background .2s;
+  }
+  .opt:active { transform: translateY(4px); box-shadow: 0 3px 0 rgba(0,0,0,.09); }
+  .opt .e { font-size: 56px; line-height: 1.1; }
+  .opt .e.num { font-size: 60px; font-weight: 900; color: var(--purple); }
+  .opt .e.small { font-size: 30px; letter-spacing: -2px; }
+  .opt .lbl { font-size: 16px; font-weight: 800; margin-top: 4px; color: var(--purple); visibility: hidden; }
+  .opt.show-lbl .lbl { visibility: visible; }
+  .opt.right { background: #d9ffe8; box-shadow: 0 7px 0 var(--green); animation: jump .5s; }
+  .opt.wrong { animation: shake .45s; background: #ffe3e3; }
+  .opt.dim { opacity: .45; }
+  @keyframes shake { 20%,60% { transform: translateX(-8px); } 40%,80% { transform: translateX(8px); } }
+
+  .speak { background: rgba(255,255,255,.92); border-radius: 26px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+  .speak .show { font-size: 58px; line-height: 1.1; }
+  .model { background: var(--soft); border: 2px dashed #c9bfff; border-radius: 18px; padding: 10px 18px; font-size: 22px; font-weight: 800; color: var(--purple); }
+  .model small { display: block; font-size: 12px; color: #8a86ad; font-weight: 600; margin-top: 2px; }
+  .speak .hint { font-size: 13px; color: #8a86ad; }
+  .mic {
+    position: relative; width: 92px; height: 92px; border-radius: 50%; font-size: 42px; color: #fff;
+    background: linear-gradient(180deg, #ff8cc0, var(--pink)); box-shadow: 0 6px 0 #d94a8c, 0 10px 22px rgba(255,111,174,.45);
+  }
+  .mic:active { transform: translateY(3px); }
+  .mic .ring { position: absolute; inset: -6px; border-radius: 50%; border: 5px solid var(--pink); opacity: 0; transform: scale(1); transition: transform .08s; pointer-events: none; }
+  .mic.listening { background: linear-gradient(180deg, #ff7a7a, var(--red)); box-shadow: 0 6px 0 #c23b3f; }
+  .mic.listening .ring { opacity: .5; }
+  .mic.tapmode { font-size: 18px; font-weight: 800; width: auto; height: auto; border-radius: 999px; padding: 16px 26px; }
+  .mic.done { background: linear-gradient(180deg, #5fe39a, var(--green)); box-shadow: 0 6px 0 #1f9d55; }
+  .mic-status { font-size: 14px; color: #6b678f; min-height: 20px; text-align: center; }
+  .heard { font-size: 13px; color: #8a86ad; }
+  .after { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .after[hidden] { display: none; }
+  .next-btn { background: var(--purple); color: #fff; box-shadow: 0 4px 0 #5a3fd6; }
+
+  /* ---------- result ---------- */
+  #screen-result { align-items: center; justify-content: center; text-align: center; gap: 6px; }
+  #screen-result .pet { font-size: 120px; }
+  .res-stars { font-size: 54px; letter-spacing: 6px; margin: 6px 0; }
+  .res-stars span { display: inline-block; opacity: .2; transform: scale(.6); transition: all .4s; }
+  .res-stars span.on { opacity: 1; transform: scale(1); }
+  .res-title { font-size: 30px; font-weight: 900; color: #fff; text-shadow: 0 3px 0 var(--purple); }
+  .res-sub { font-size: 15px; color: #fff; opacity: .95; }
+  .evolve { margin-top: 8px; background: #fff; border-radius: 18px; padding: 10px 16px; font-weight: 800; color: var(--purple); animation: bump .8s ease 2; }
+  .res-btns { display: flex; gap: 12px; margin-top: 22px; }
+  .res-btns .pill { font-size: 17px; padding: 13px 22px; }
+
+  /* ---------- misc ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); opacity: 0;
+    background: rgba(45,42,74,.92); color: #fff; padding: 10px 16px; border-radius: 14px; font-size: 13.5px;
+    max-width: 88%; text-align: center; transition: all .3s; pointer-events: none; z-index: 30; line-height: 1.5;
+  }
+  .toast.on { opacity: 1; transform: translateX(-50%); }
+  .confetti { position: fixed; top: -40px; font-size: 26px; pointer-events: none; z-index: 20; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(540deg); } }
+  .fly-star { position: fixed; font-size: 34px; z-index: 25; pointer-events: none; transition: all .7s cubic-bezier(.5,-0.3,.7,1); }
+
+  .modal { position: fixed; inset: 0; background: rgba(30,25,60,.45); display: none; align-items: flex-end; justify-content: center; z-index: 40; }
+  .modal.on { display: flex; }
+  .sheet { background: #fff; width: 100%; max-width: 480px; border-radius: 26px 26px 0 0; padding: 20px 20px max(20px, env(safe-area-inset-bottom)); max-height: 88vh; overflow-y: auto; animation: up .3s ease; }
+  @keyframes up { from { transform: translateY(40px); opacity: 0; } }
+  .sheet h3 { margin: 0 0 6px; }
+  .sheet h4 { margin: 16px 0 8px; font-size: 14px; color: #6b678f; }
+  .seg { display: flex; flex-wrap: wrap; gap: 8px; }
+  .seg button { padding: 9px 13px; border-radius: 12px; background: var(--soft); font-size: 14px; }
+  .seg button.on { background: var(--purple); color: #fff; }
+  .caps { font-size: 13px; line-height: 1.8; background: var(--soft); border-radius: 14px; padding: 10px 12px; }
+  .sheet p { font-size: 13px; line-height: 1.75; color: #555; margin: 6px 0; }
+  .danger { background: #ffe3e3; color: #c0392b; padding: 10px 14px; border-radius: 12px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <section id="screen-start" class="screen active">
+    <div class="pet idle">🥚</div>
+    <h1>Dodo's English Island</h1>
+    <h2>Dodo 的英语冒险岛</h2>
+    <button class="big-btn" id="btn-start">▶ Let's go!</button>
+    <div class="parent-note">
+      家长须知：小龙 Dodo 只听得懂英语。孩子要<b>听</b>它说话、<b>开口</b>回答，才能帮它长大。<br>
+      建议戴耳机、在安静的地方玩，并允许使用麦克风。
+    </div>
+  </section>
+
+  <section id="screen-map" class="screen">
+    <div class="top-row">
+      <div class="pet-card">
+        <div class="pet idle" id="map-pet">🥚</div>
+        <div class="pet-info">
+          <b>Dodo</b>
+          <div class="stage" id="map-stage">Egg · 蛋宝宝</div>
+          <div class="bar"><i id="map-bar"></i></div>
+          <small id="map-next"></small>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+        <div class="coins" id="map-coins">⭐ 0</div>
+        <button class="icon-btn" id="btn-parent" aria-label="家长设置">⚙️</button>
+      </div>
+    </div>
+    <div class="pet-tip">点一点 Dodo，听它说英语</div>
+    <div class="levels" id="levels"></div>
+  </section>
+
+  <section id="screen-game" class="screen">
+    <div class="game-top">
+      <button class="icon-btn" id="btn-quit" aria-label="返回">✕</button>
+      <div class="dots" id="dots"></div>
+      <div class="coins" id="game-coins">⭐ 0</div>
+    </div>
+    <div class="scene">
+      <div class="scene-deco" id="scene-deco"></div>
+      <div class="bubble" id="bubble"></div>
+      <div class="pet idle" id="game-pet">🥚</div>
+      <div class="replay">
+        <button class="pill" id="btn-replay">🔊 Again</button>
+        <button class="pill" id="btn-slow">🐢 Slow</button>
+      </div>
+    </div>
+    <div id="stage-area"></div>
+  </section>
+
+  <section id="screen-result" class="screen">
+    <div class="pet jump" id="res-pet">🐣</div>
+    <div class="res-title" id="res-title">Great job!</div>
+    <div class="res-stars" id="res-stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+    <div class="res-sub" id="res-sub"></div>
+    <div class="evolve" id="res-evolve" hidden></div>
+    <div class="res-btns">
+      <button class="pill" id="btn-again">🔁 再玩一次</button>
+      <button class="pill next-btn" id="btn-map">🗺️ 回到小岛</button>
+    </div>
+  </section>
+</div>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h3>👨‍👩‍👧 家长设置</h3>
+    <h4>口语检测方式</h4>
+    <div class="seg" id="seg-mode">
+      <button data-mode="auto">自动</button>
+      <button data-mode="asr">智能识别</button>
+      <button data-mode="record">录音模式</button>
+      <button data-mode="tap">点击模式</button>
+    </div>
+    <p>
+      <b>智能识别</b>：浏览器把孩子的话转成文字并判断对错（需要 Chrome 等支持在线语音识别的浏览器，国内网络通常不可用）。<br>
+      <b>录音模式</b>：检测孩子是否真的开口说了，并可回放自己的声音和标准发音对比，离线可用。<br>
+      <b>点击模式</b>：没有麦克风时使用，孩子说完自己点按钮。<br>
+      <b>自动</b>：优先智能识别，不可用时自动切换为录音模式。
+    </p>
+    <h4>语速</h4>
+    <div class="seg" id="seg-rate">
+      <button data-rate="0.9">正常</button>
+      <button data-rate="0.72">慢一点</button>
+    </div>
+    <h4>本设备支持情况</h4>
+    <div class="caps" id="caps"></div>
+    <h4>设计理念</h4>
+    <p>游戏里 Dodo 只说英语，不出现中文翻译：孩子靠图片和情境猜意思，像学母语一样“先听懂、再开口”。答错不扣分，Dodo 会告诉孩子点到的是什么，再说一遍题目，让每一次错误都变成一次听力输入。</p>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="danger" id="btn-reset">清空进度</button>
+      <button class="pill next-btn" id="btn-close" style="margin-left:auto">完成</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = (s) => document.querySelector(s);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  // ---------------------------------------------------------------- content
+
+  const ITEMS = {
+    apple: { e: '🍎', w: 'apple', said: 'an apple' },
+    banana: { e: '🍌', w: 'banana', said: 'a banana' },
+    grapes: { e: '🍇', w: 'grapes', said: 'grapes' },
+    orange: { e: '🍊', w: 'orange', said: 'an orange' },
+    watermelon: { e: '🍉', w: 'watermelon', said: 'a watermelon' },
+    strawberry: { e: '🍓', w: 'strawberry', said: 'a strawberry' },
+    pear: { e: '🍐', w: 'pear', said: 'a pear' },
+
+    cat: { e: '🐱', w: 'cat', said: 'a cat' },
+    dog: { e: '🐶', w: 'dog', said: 'a dog' },
+    rabbit: { e: '🐰', w: 'rabbit', said: 'a rabbit' },
+    panda: { e: '🐼', w: 'panda', said: 'a panda' },
+    monkey: { e: '🐵', w: 'monkey', said: 'a monkey' },
+    bird: { e: '🐦', w: 'bird', said: 'a bird' },
+    tiger: { e: '🐯', w: 'tiger', said: 'a tiger' },
+
+    red: { e: '🔴', w: 'red', said: 'red' },
+    blue: { e: '🔵', w: 'blue', said: 'blue' },
+    green: { e: '🟢', w: 'green', said: 'green' },
+    yellow: { e: '🟡', w: 'yellow', said: 'yellow' },
+    purple: { e: '🟣', w: 'purple', said: 'purple' },
+
+    nose: { e: '👃', w: 'nose', said: 'your nose' },
+    ear: { e: '👂', w: 'ear', said: 'your ear' },
+    eyes: { e: '👀', w: 'eyes', said: 'your eyes' },
+    mouth: { e: '👄', w: 'mouth', said: 'your mouth' },
+    hand: { e: '✋', w: 'hand', said: 'your hand' },
+    foot: { e: '🦶', w: 'foot', said: 'your foot' },
+
+    stars1: { e: '⭐', w: 'one star', said: 'one star', small: true },
+    stars2: { e: '⭐⭐', w: 'two stars', said: 'two stars', small: true },
+    stars3: { e: '⭐⭐⭐', w: 'three stars', said: 'three stars', small: true },
+    stars4: { e: '⭐⭐⭐⭐', w: 'four stars', said: 'four stars', small: true },
+    n2: { e: '2', w: 'two', said: 'two', num: true },
+    n4: { e: '4', w: 'four', said: 'four', num: true },
+    n5: { e: '5', w: 'five', said: 'five', num: true },
+    n6: { e: '6', w: 'six', said: 'six', num: true },
+    n7: { e: '7', w: 'seven', said: 'seven', num: true },
+    n8: { e: '8', w: 'eight', said: 'eight', num: true },
+    n9: { e: '9', w: 'nine', said: 'nine', num: true },
+  };
+
+  const FRUITS = ['apples', 'bananas', 'grapes', 'oranges', 'watermelons', 'strawberries', 'pears', 'apple', 'banana', 'grape', 'orange', 'watermelon', 'strawberry', 'pear'];
+  const ANIMALS = ['cats', 'dogs', 'rabbits', 'pandas', 'monkeys', 'birds', 'tigers', 'elephants', 'lions', 'cat', 'dog', 'rabbit', 'panda', 'monkey', 'bird', 'tiger', 'elephant', 'lion'];
+  const COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'black', 'white', 'brown'];
+  const AGES = ['five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', '5', '6', '7', '8', '9', '10', '11', '12'];
+
+  // listen: Dodo says something, the child taps the matching picture (comprehension, no text shown).
+  // speak:  the child repeats a model phrase in a real context.
+  // chat:   an open question; any reasonable answer counts and Dodo responds to it.
+  const LEVELS = [
+    {
+      id: 'fruit', icon: '🍎', en: 'Fruit Market', cn: '水果市场 · 喂饱 Dodo', colors: ['#ffd3a5', '#fd6585'], tint: '#fff1e6',
+      rounds: [
+        { type: 'listen', say: "I'm so hungry! I want an apple, please.", answer: 'apple', options: ['banana', 'apple', 'grapes', 'orange'], reply: 'Yummy! Thank you!' },
+        { type: 'listen', say: 'Can I have a banana?', answer: 'banana', options: ['orange', 'strawberry', 'banana', 'pear'], reply: 'Mmm, I love bananas!' },
+        { type: 'speak', show: '🍇', say: 'What are these? They are grapes. Say: grapes!', model: 'Grapes!', accept: ['grapes', 'grape'], reply: 'Yes! Grapes! Purple and sweet!' },
+        { type: 'listen', say: "Where is the watermelon? It's big and green.", answer: 'watermelon', options: ['strawberry', 'watermelon', 'apple', 'grapes'], reply: 'Wow, a big watermelon!' },
+        { type: 'speak', show: '🍊 👉 🐲', say: 'Can I have an orange, please?', model: 'Here you are!', hint: '把橘子递给 Dodo 时，对它说：', accept: ['here you are', 'here you go', 'here'], reply: 'Thank you! You are so kind!' },
+        { type: 'chat', show: '🍎 🍌 🍇 🍉', say: 'What fruit do you like?', model: 'I like ___.', example: 'I like apples.', accept: FRUITS, reply: (w) => (w ? `Wow! I like ${w} too!` : 'Wow! I like fruit too!') },
+      ],
+    },
+    {
+      id: 'animals', icon: '🐼', en: 'Animal Forest', cn: '动物森林 · 交朋友', colors: ['#c1f7c4', '#38b2ac'], tint: '#e8fff0',
+      rounds: [
+        { type: 'listen', say: 'Hello! Where is the panda?', answer: 'panda', options: ['cat', 'monkey', 'panda', 'dog'], reply: 'Hi, panda! You are so cute!' },
+        { type: 'listen', say: 'Meow, meow! Who says meow?', answer: 'cat', options: ['dog', 'cat', 'bird', 'rabbit'], reply: 'Yes! The cat says meow!' },
+        { type: 'speak', show: '🐵', say: "Look! It's a monkey. Say: monkey!", model: 'Monkey!', accept: ['monkey', 'monkeys'], reply: 'Ooh ooh, ah ah! Good job!' },
+        { type: 'listen', say: 'Find the rabbit. It has long ears.', answer: 'rabbit', options: ['rabbit', 'tiger', 'panda', 'bird'], reply: "Hop, hop! Here's the rabbit!" },
+        { type: 'speak', show: '🐶 👋', say: 'Say hello to the dog. Hello, dog!', model: 'Hello, dog!', accept: ['hello dog', 'hi dog', 'hello', 'hi'], reply: 'Woof woof! The dog says hello!' },
+        { type: 'chat', show: '🐱 🐶 🐼 🐯', say: 'What animal do you like?', model: 'I like ___.', example: 'I like pandas.', accept: ANIMALS, reply: (w) => (w ? `${cap(w)}! I like ${w} too!` : 'Cool! I like animals too!') },
+      ],
+    },
+    {
+      id: 'colors', icon: '🎨', en: 'Color Magic', cn: '颜色魔法 · 变变变', colors: ['#a1c4fd', '#c2e9fb'], tint: '#eef6ff',
+      rounds: [
+        { type: 'listen', say: 'Magic time! Touch the red one.', answer: 'red', options: ['blue', 'red', 'green', 'yellow'], reply: 'Red! Abracadabra!' },
+        { type: 'listen', say: 'The sky is blue. Find blue!', answer: 'blue', options: ['yellow', 'green', 'blue', 'purple'], reply: 'Blue, like the sky!' },
+        { type: 'speak', show: '🟢', say: "What color is it? It's green.", model: "It's green.", accept: ["it's green", 'green'], reply: 'Green! Like a little frog!' },
+        { type: 'listen', say: 'Bananas are yellow. Touch yellow!', answer: 'yellow', options: ['red', 'yellow', 'purple', 'blue'], reply: 'Yellow, like a banana!' },
+        { type: 'speak', show: '🍎', say: 'What color is the apple?', model: "It's red.", accept: ["it's red", 'red'], reply: 'Yes! The apple is red!' },
+        { type: 'chat', show: '🔴 🔵 🟢 🟡 🟣', say: "What's your favorite color?", model: 'My favorite color is ___.', example: 'My favorite color is blue.', accept: COLORS, reply: (w) => (w ? `${cap(w)}! What a beautiful color!` : 'What a beautiful color!') },
+      ],
+    },
+    {
+      id: 'body', icon: '🙋', en: 'Dodo Says', cn: 'Dodo 说 · 动起来', colors: ['#fbc2eb', '#a6c1ee'], tint: '#fdf0ff',
+      rounds: [
+        { type: 'listen', say: 'Dodo says: touch your nose!', answer: 'nose', options: ['ear', 'nose', 'mouth', 'eyes'], reply: 'Nose! Beep beep!' },
+        { type: 'listen', say: 'Dodo says: show me your hand!', answer: 'hand', options: ['foot', 'eyes', 'hand', 'nose'], reply: 'High five!' },
+        { type: 'listen', say: 'Dodo says: point to your eyes!', answer: 'eyes', options: ['eyes', 'mouth', 'ear', 'hand'], reply: 'I see you with my eyes!' },
+        { type: 'speak', show: '👂', say: "What's this? It's my ear. Say: ear!", model: 'Ear!', accept: ['ear', 'ears', 'my ear'], reply: 'Yes! I can hear with my ears!' },
+        { type: 'listen', say: 'Clap your hands! Now, touch your mouth.', answer: 'mouth', options: ['nose', 'foot', 'mouth', 'ear'], reply: 'Yum yum, mouth!' },
+        { type: 'speak', show: '💪', say: 'You are great! Say: I can do it!', model: 'I can do it!', accept: ['i can do it', 'can do it', 'i can do', 'i can'], reply: 'Yes, you can! Hooray!' },
+      ],
+    },
+    {
+      id: 'numbers', icon: '🔢', en: 'Number Train', cn: '数字火车 · 数一数', colors: ['#fddb92', '#d1fdff'], tint: '#fffbe6',
+      rounds: [
+        { type: 'listen', say: 'Give me three stars, please.', answer: 'stars3', options: ['stars1', 'stars3', 'stars2', 'stars4'], reply: 'One, two, three! Thank you!' },
+        { type: 'speak', show: '🍎 🍎', say: 'How many apples? Two apples!', model: 'Two!', accept: ['two', '2', 'two apples', 'too', 'to'], reply: 'Yes! One, two. Two apples!' },
+        { type: 'listen', say: 'Number five! Where is five?', answer: 'n5', options: ['n2', 'n9', 'n5', 'n7'], reply: 'Five! Give me five!' },
+        { type: 'speak', show: '1️⃣ 2️⃣ 3️⃣', say: 'Count with me! One, two, three!', model: 'One, two, three!', accept: ['one two three', '1 2 3', '123', 'one two 3'], reply: 'Super! You can count!' },
+        { type: 'listen', say: 'I am seven years old. Touch seven!', answer: 'n7', options: ['n6', 'n4', 'n8', 'n7'], reply: "That's right! I'm seven!" },
+        { type: 'chat', show: '🎂', say: 'How old are you?', model: "I'm ___.", example: "I'm eight.", accept: AGES, reply: (w) => (w ? `${w}? Wow, you are a big kid!` : 'Wow, you are a big kid!') },
+      ],
+    },
+  ];
+
+  const PRAISE = ['Great job!', 'Awesome!', 'Well done!', 'You did it!', 'Super!', 'Good job!'];
+  const PET_TALK = [
+    "Hi! I'm Dodo!", "Let's play!", 'I like English!', "How are you? I'm happy!", 'Tickle tickle! Ha ha!', 'Help me grow up, please!', 'You are my best friend!',
+  ];
+  const STAGES = [
+    { min: 0, e: '🥚', en: 'Egg', cn: '蛋宝宝' },
+    { min: 6, e: '🐣', en: 'Baby', cn: '破壳啦' },
+    { min: 16, e: '🐲', en: 'Little Dragon', cn: '小龙' },
+    { min: 28, e: '🐉', en: 'Big Dragon', cn: '大飞龙' },
+  ];
+
+  // ---------------------------------------------------------------- storage
+
+  const KEY = 'dodo-english-v1';
+  const data = Object.assign({ coins: 0, stars: {}, mode: 'auto', rate: 0.9 }, safeLoad());
+  function safeLoad() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { /* private mode */ } }
+
+  function stageOf(coins) { let s = STAGES[0]; for (const st of STAGES) if (coins >= st.min) s = st; return s; }
+  function nextStage(coins) { return STAGES.find((st) => st.min > coins) || null; }
+
+  // ---------------------------------------------------------------- voice (TTS)
+
+  const Voice = {
+    voice: null,
+    seq: 0,
+    init() {
+      if (!('speechSynthesis' in window)) return;
+      const choose = () => {
+        const vs = speechSynthesis.getVoices().filter((v) => /^en[-_]/i.test(v.lang));
+        const prefer = [/samantha/i, /google us english/i, /aria|jenny|ana/i, /female/i, /en[-_]us/i, /en[-_]gb/i];
+        for (const re of prefer) {
+          const v = vs.find((x) => re.test(x.name) || re.test(x.lang));
+          if (v) { this.voice = v; return; }
+        }
+        this.voice = vs[0] || null;
+      };
+      choose();
+      speechSynthesis.onvoiceschanged = choose;
+    },
+    // Resolves true when the utterance finished, false when it was cut off by a newer one.
+    say(text, rate) {
+      const my = ++this.seq;
+      rate = rate || data.rate;
+      return new Promise((resolve) => {
+        const finish = () => { clearTimeout(timer); resolve(my === this.seq); };
+        // Some mobile browsers never fire onend, so never let the game hang on TTS.
+        const timer = setTimeout(finish, 1500 + (text.length * 85) / rate);
+        if (!('speechSynthesis' in window)) return;
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'en-US';
+        if (this.voice) u.voice = this.voice;
+        u.rate = rate;
+        u.pitch = 1.25;
+        u.onend = finish;
+        u.onerror = finish;
+        speechSynthesis.speak(u);
+      });
+    },
+    cancel() { this.seq++; if ('speechSynthesis' in window) speechSynthesis.cancel(); },
+  };
+
+  // ---------------------------------------------------------------- sound effects
+
+  const Sfx = {
+    ctx: null,
+    ensure() {
+      if (!this.ctx) { const C = window.AudioContext || window.webkitAudioContext; if (C) this.ctx = new C(); }
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+      return this.ctx;
+    },
+    tone(freq, dur, type, delay, vol) {
+      const ctx = this.ensure(); if (!ctx) return;
+      const t = ctx.currentTime + (delay || 0);
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = type || 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol || 0.15, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + dur + 0.05);
+    },
+    good() { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.18, 'triangle', i * 0.08)); },
+    bad() { this.tone(300, 0.18, 'square', 0, 0.05); this.tone(220, 0.25, 'square', 0.12, 0.05); },
+    pop() { this.tone(880, 0.08, 'sine', 0, 0.1); },
+    win() { [523, 659, 784, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.22, 'triangle', i * 0.12)); },
+  };
+
+  // ---------------------------------------------------------------- microphone / speech
+
+  const Mic = {
+    SR: window.SpeechRecognition || window.webkitSpeechRecognition || null,
+    asrBroken: false,
+    denied: false,
+    stream: null,
+    stopFlag: false,
+    active: null,
+    canRecord() { return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && window.isSecureContext !== false; },
+    mode() {
+      if (this.denied) return 'tap';
+      const p = data.mode;
+      if (p === 'tap') return 'tap';
+      if (p === 'record') return this.canRecord() ? 'record' : 'tap';
+      if (this.SR && !this.asrBroken) return 'asr';
+      return this.canRecord() ? 'record' : 'tap';
+    },
+    recognize() {
+      return new Promise((resolve) => {
+        const r = new this.SR();
+        r.lang = 'en-US';
+        r.interimResults = false;
+        r.maxAlternatives = 5;
+        r.continuous = false;
+        const transcripts = [];
+        let error = null;
+        r.onresult = (e) => { for (const res of e.results) for (const alt of res) transcripts.push(alt.transcript); };
+        r.onerror = (e) => { error = e.error; };
+        r.onend = () => { clearTimeout(t); this.active = null; resolve({ transcripts, error }); };
+        const t = setTimeout(() => { try { r.stop(); } catch (e) { /* already stopped */ } }, 7000);
+        this.active = r;
+        try { r.start(); } catch (e) { clearTimeout(t); resolve({ transcripts, error: 'start-failed' }); }
+      });
+    },
+    // Offline fallback: confirm the child actually spoke (voice activity) and keep a recording to play back.
+    async record(onLevel) {
+      if (!this.stream) {
+        this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      }
+      const ctx = Sfx.ensure();
+      const src = ctx.createMediaStreamSource(this.stream);
+      const an = ctx.createAnalyser();
+      an.fftSize = 1024;
+      src.connect(an);
+      const buf = new Float32Array(an.fftSize);
+      let rec = null; const chunks = [];
+      if (window.MediaRecorder) {
+        try { rec = new MediaRecorder(this.stream); rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); }; rec.start(); } catch (e) { rec = null; }
+      }
+      this.stopFlag = false;
+      return new Promise((resolve) => {
+        const t0 = performance.now();
+        let last = t0, voiced = 0, lastVoice = 0, noise = 0.01;
+        const iv = setInterval(() => {
+          an.getFloatTimeDomainData(buf);
+          let sum = 0; for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+          const rms = Math.sqrt(sum / buf.length);
+          const now = performance.now(); const dt = now - last; last = now;
+          if (now - t0 < 250) noise = Math.max(noise, rms);
+          const threshold = Math.min(0.08, Math.max(0.02, noise * 2.2));
+          if (rms > threshold) { voiced += dt; lastVoice = now; }
+          onLevel(Math.min(1, rms / 0.2));
+          const finishedTalking = voiced > 400 && now - lastVoice > 900;
+          if (finishedTalking || now - t0 > 6500 || this.stopFlag) {
+            clearInterval(iv); src.disconnect(); onLevel(0);
+            const done = (blob) => resolve({ voicedMs: voiced, blob });
+            if (rec && rec.state !== 'inactive') { rec.onstop = () => done(new Blob(chunks, { type: rec.mimeType || 'audio/webm' })); rec.stop(); } else done(null);
+          }
+        }, 40);
+      });
+    },
+    stop() { this.stopFlag = true; if (this.active) { try { this.active.stop(); } catch (e) { /* noop */ } } },
+    release() { if (this.stream) { this.stream.getTracks().forEach((t) => t.stop()); this.stream = null; } },
+  };
+
+  function norm(s) { return String(s).toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function similarity(a, b) {
+    if (a === b) return 1;
+    const m = a.length, n = b.length; if (!m || !n) return 0;
+    let prev = Array.from({ length: n + 1 }, (_, j) => j);
+    for (let i = 1; i <= m; i++) {
+      const cur = [i];
+      for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return 1 - prev[n] / Math.max(m, n);
+  }
+  // Lenient on purpose: young learners and child voices confuse recognisers, and praise matters more than precision here.
+  function matchSpeech(transcripts, accept) {
+    for (const raw of transcripts) {
+      const t = norm(raw); if (!t) continue;
+      const words = t.split(' ');
+      for (const a of accept) {
+        const na = norm(a);
+        if (t === na || (' ' + t + ' ').includes(' ' + na + ' ')) return a;
+        if (na.includes(' ')) { if (similarity(t, na) >= 0.7) return a; } else if (words.some((w) => similarity(w, na) >= 0.75)) return a;
+      }
+    }
+    return null;
+  }
+
+  // ---------------------------------------------------------------- ui helpers
+
+  function show(id) {
+    document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-' + id));
+  }
+  let toastTimer;
+  function toast(msg, ms) {
+    const el = $('#toast'); el.textContent = msg; el.classList.add('on');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('on'), ms || 3200);
+  }
+  function setTheme(colors) {
+    document.body.style.setProperty('--theme1', colors[0]);
+    document.body.style.setProperty('--theme2', colors[1]);
+  }
+  function updateCoins(bump) {
+    ['#map-coins', '#game-coins'].forEach((s) => {
+      const el = $(s); el.textContent = '⭐ ' + data.coins;
+      if (bump) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+    });
+  }
+  function petEls() { return [$('#map-pet'), $('#game-pet')]; }
+  function renderPet() {
+    const st = stageOf(data.coins);
+    petEls().forEach((el) => { el.textContent = st.e; });
+    $('#map-stage').textContent = `${st.en} · ${st.cn}`;
+    const nx = nextStage(data.coins);
+    if (nx) {
+      const pct = ((data.coins - st.min) / (nx.min - st.min)) * 100;
+      $('#map-bar').style.width = pct + '%';
+      $('#map-next').textContent = `再得 ${nx.min - data.coins} ⭐，Dodo 就会长大！`;
+    } else {
+      $('#map-bar').style.width = '100%';
+      $('#map-next').textContent = 'Dodo 已经长成大飞龙啦！继续玩，复习会让耳朵更灵！';
+    }
+  }
+  async function petSay(text, rate) {
+    const el = $('#screen-game').classList.contains('active') ? $('#game-pet') : $('#map-pet');
+    el.classList.remove('idle'); el.classList.add('talking');
+    const ok = await Voice.say(text, rate);
+    el.classList.remove('talking'); el.classList.add('idle');
+    return ok;
+  }
+  function flyStar(fromEl) {
+    const r = fromEl.getBoundingClientRect(); const to = $('#game-coins').getBoundingClientRect();
+    const s = document.createElement('div'); s.className = 'fly-star'; s.textContent = '⭐';
+    s.style.left = r.left + r.width / 2 - 17 + 'px'; s.style.top = r.top + r.height / 2 - 17 + 'px';
+    document.body.appendChild(s);
+    requestAnimationFrame(() => { s.style.left = to.left + 10 + 'px'; s.style.top = to.top + 'px'; s.style.transform = 'scale(.6)'; });
+    setTimeout(() => { s.remove(); updateCoins(true); }, 750);
+  }
+  function confetti() {
+    const bits = ['⭐', '🎉', '✨', '🎈', '💖', '🌈'];
+    for (let i = 0; i < 26; i++) {
+      const c = document.createElement('div'); c.className = 'confetti'; c.textContent = pick(bits);
+      c.style.left = Math.random() * 100 + 'vw'; c.style.animationDuration = 2 + Math.random() * 2 + 's'; c.style.animationDelay = Math.random() * 0.6 + 's';
+      document.body.appendChild(c); setTimeout(() => c.remove(), 5000);
+    }
+  }
+
+  // ---------------------------------------------------------------- map
+
+  function unlocked(i) { return i === 0 || (data.stars[LEVELS[i - 1].id] || 0) > 0; }
+  function renderMap() {
+    setTheme(['#8ec5ff', '#e0c3fc']);
+    renderPet(); updateCoins();
+    const box = $('#levels'); box.innerHTML = '';
+    LEVELS.forEach((lv, i) => {
+      const b = document.createElement('button');
+      const open = unlocked(i); const st = data.stars[lv.id] || 0;
+      b.className = 'level' + (open ? '' : ' locked');
+      b.dataset.level = lv.id;
+      b.innerHTML = `<div class="ico" style="background:${lv.tint}">${open ? lv.icon : '🔒'}</div>
+        <div class="txt"><div class="en">${lv.en}</div><div class="cn">${lv.cn}</div></div>
+        <div class="st">${'⭐'.repeat(st)}${'<span style="opacity:.2">⭐</span>'.repeat(3 - st)}</div>`;
+      b.onclick = () => {
+        if (!open) { Sfx.bad(); toast('先完成上一关，才能解锁这里哦'); return; }
+        Sfx.pop(); startLevel(lv.id);
+      };
+      box.appendChild(b);
+    });
+    show('map');
+  }
+
+  // ---------------------------------------------------------------- game
+
+  const S = { level: null, idx: 0, session: 0, firstTry: true, tries: 0, locked: false, micBusy: false, firstCount: 0, blob: null };
+  const cur = () => S.level.rounds[S.idx];
+
+  function startLevel(id) {
+    S.level = LEVELS.find((l) => l.id === id);
+    S.idx = 0; S.firstCount = 0; S.session++;
+    setTheme(S.level.colors);
+    $('#scene-deco').textContent = S.level.icon;
+    renderPet(); updateCoins();
+    show('game');
+    playRound();
+  }
+
+  function renderDots() {
+    const d = $('#dots'); d.innerHTML = '';
+    S.level.rounds.forEach((_, i) => { const x = document.createElement('i'); if (i < S.idx) x.className = 'done'; if (i === S.idx) x.className = 'now'; d.appendChild(x); });
+  }
+  function setBubble(text, mystery) {
+    const b = $('#bubble'); b.textContent = text; b.classList.toggle('mystery', !!mystery);
+  }
+
+  async function playRound() {
+    const r = cur();
+    S.firstTry = true; S.tries = 0; S.locked = false; S.micBusy = false; S.blob = null;
+    renderDots();
+    const area = $('#stage-area'); area.innerHTML = '';
+    if (r.type === 'listen') {
+      setBubble('👂 Listen…', true);
+      area.appendChild(renderOptions(r));
+    } else {
+      setBubble(r.say);
+      area.appendChild(renderSpeak(r));
+    }
+    await petSay(r.say);
+  }
+
+  function renderOptions(r) {
+    const g = document.createElement('div'); g.className = 'options';
+    r.options.forEach((key) => {
+      const it = ITEMS[key];
+      const b = document.createElement('button');
+      b.className = 'opt'; b.dataset.key = key;
+      b.innerHTML = `<div class="e${it.num ? ' num' : ''}${it.small ? ' small' : ''}">${it.e}</div><div class="lbl">${it.w}</div>`;
+      b.onclick = () => onPick(key, b);
+      g.appendChild(b);
+    });
+    return g;
+  }
+
+  async function onPick(key, el) {
+    if (S.locked) return;
+    const r = cur(); const sess = S.session;
+    if (key === r.answer) {
+      S.locked = true;
+      el.classList.add('right');
+      document.querySelectorAll('.opt').forEach((o) => { o.classList.add('show-lbl'); if (o !== el) o.classList.add('dim'); });
+      Sfx.good();
+      setBubble(r.say);
+      award(el);
+      const pet = $('#game-pet'); pet.classList.remove('jump'); void pet.offsetWidth; pet.classList.add('jump');
+      await petSay(r.reply || pick(PRAISE));
+      if (sess !== S.session) return;
+      await wait(350);
+      if (sess === S.session) nextRound();
+    } else {
+      S.firstTry = false;
+      el.classList.remove('wrong'); void el.offsetWidth; el.classList.add('wrong', 'show-lbl');
+      Sfx.bad();
+      // Turn the mistake into input: name what was tapped, then repeat the request.
+      if (await petSay(`Oops! That's ${ITEMS[key].said}. Listen again!`)) await petSay(r.say);
+    }
+  }
+
+  function award(fromEl) {
+    if (!S.firstTry) return;
+    S.firstCount++; data.coins++; save();
+    flyStar(fromEl);
+  }
+
+  function renderSpeak(r) {
+    const mode = Mic.mode();
+    const box = document.createElement('div'); box.className = 'speak';
+    const hint = r.hint || (r.type === 'chat' ? '用英语回答 Dodo，比如：' : '听一听，跟着大声说：');
+    box.innerHTML = `
+      <div class="show">${r.show}</div>
+      <div class="hint">${hint}</div>
+      <button class="model" id="btn-model">🔊 ${r.model}${r.example ? `<small>e.g. ${r.example}</small>` : ''}</button>
+      <button class="mic${mode === 'tap' ? ' tapmode' : ''}" id="btn-mic">${mode === 'tap' ? '✋ 我大声说完啦' : '<span>🎤</span><i class="ring"></i>'}</button>
+      <div class="mic-status" id="mic-status">${mode === 'tap' ? '没有麦克风：大声说出来，说完点按钮' : '点麦克风，大声说出来！'}</div>
+      <div class="heard" id="heard"></div>
+      <div class="after" id="after" hidden>
+        <button class="pill" id="btn-myvoice" hidden>▶ 我的声音</button>
+        <button class="pill" id="btn-native">🔊 标准发音</button>
+        <button class="pill next-btn" id="btn-next">Next ➜</button>
+      </div>`;
+    box.querySelector('#btn-model').onclick = () => { Sfx.pop(); petSay(r.example || r.model, Math.min(data.rate, 0.8)); };
+    box.querySelector('#btn-mic').onclick = onMic;
+    box.querySelector('#btn-native').onclick = () => petSay(r.example || r.model, Math.min(data.rate, 0.8));
+    box.querySelector('#btn-next').onclick = () => { Sfx.pop(); nextRound(); };
+    box.querySelector('#btn-myvoice').onclick = () => {
+      if (!S.blob) return;
+      Voice.cancel();
+      const a = new Audio(URL.createObjectURL(S.blob)); a.play().catch(() => toast('这个浏览器无法回放录音'));
+    };
+    return box;
+  }
+
+  function micUI(state, text) {
+    const b = $('#btn-mic'); if (!b) return;
+    b.classList.toggle('listening', state === 'listening');
+    b.classList.toggle('done', state === 'done');
+    if (state === 'done' && !b.classList.contains('tapmode')) b.querySelector('span').textContent = '✔';
+    if (text != null) $('#mic-status').textContent = text;
+  }
+  function micLevel(v) { const ring = document.querySelector('#btn-mic .ring'); if (ring) ring.style.transform = `scale(${1 + v * 0.6})`; }
+
+  async function onMic() {
+    if (S.locked) return;
+    if (S.micBusy) { Mic.stop(); return; }
+    const r = cur(); const sess = S.session; const mode = Mic.mode();
+    Voice.cancel();
+    if (mode === 'tap') { speakSuccess(null, {}); return; }
+
+    S.micBusy = true;
+    micUI('listening', mode === 'asr' ? '我在听… 说完会自动停止' : '我在听… 说完停一下就好');
+    try {
+      if (mode === 'asr') {
+        const res = await Mic.recognize();
+        if (sess !== S.session) return;
+        S.micBusy = false;
+        if (res.error === 'not-allowed') { Mic.denied = true; micUI('idle'); toast('麦克风权限被拒绝，已切换为点击模式'); rebuildSpeak(); return; }
+        if (res.error && ['network', 'service-not-allowed', 'language-not-supported', 'start-failed', 'audio-capture'].includes(res.error)) {
+          Mic.asrBroken = true; micUI('idle');
+          toast('智能识别暂时用不了（国内网络常见），已切换为录音模式，再点一次麦克风吧', 4200);
+          rebuildSpeak(); return;
+        }
+        const hit = matchSpeech(res.transcripts, r.accept);
+        if (hit) { speakSuccess(hit, { heard: res.transcripts[0] }); return; }
+        if (!res.transcripts.length) { micUI('idle', '没听到声音，大声一点再试试！'); await petSay("I can't hear you. Say it louder, please!"); return; }
+        S.tries++; S.firstTry = false;
+        $('#heard').textContent = '我听到：' + res.transcripts[0];
+        if (S.tries >= 2) { speakSuccess(null, { gentle: true }); return; }
+        micUI('idle', '差一点点！先听一遍，再说一次');
+        if (await petSay('Almost! Listen and say it again.')) await petSay(r.example || r.model, Math.min(data.rate, 0.8));
+      } else {
+        const res = await Mic.record(micLevel);
+        if (sess !== S.session) return;
+        S.micBusy = false;
+        if (res.voicedMs >= 350) { S.blob = res.blob; speakSuccess(null, { blob: res.blob }); return; }
+        micUI('idle', '没听到声音，大声一点再试试！');
+        await petSay("I can't hear you. Say it louder, please!");
+      }
+    } catch (e) {
+      S.micBusy = false;
+      Mic.denied = true; micUI('idle');
+      toast('无法使用麦克风，已切换为点击模式');
+      rebuildSpeak();
+    }
+  }
+
+  function rebuildSpeak() {
+    const r = cur(); const area = $('#stage-area'); area.innerHTML = ''; area.appendChild(renderSpeak(r));
+  }
+
+  async function speakSuccess(word, opts) {
+    const r = cur();
+    S.locked = true;
+    micUI('done', opts.gentle ? '很棒的尝试！听听标准发音，下次会更好' : '说得真好！');
+    if (opts.heard) $('#heard').textContent = '我听到：' + opts.heard;
+    Sfx.good();
+    if (!opts.gentle) award($('#btn-mic'));
+    const after = $('#after'); after.hidden = false;
+    $('#btn-myvoice').hidden = !opts.blob;
+    const pet = $('#game-pet'); pet.classList.remove('jump'); void pet.offsetWidth; pet.classList.add('jump');
+    let reply;
+    if (opts.gentle) reply = `Good try! Listen: ${r.example || r.model}`;
+    else if (typeof r.reply === 'function') reply = r.reply(word);
+    else reply = r.reply || pick(PRAISE);
+    setBubble(reply);
+    await petSay(reply);
+  }
+
+  function nextRound() {
+    Voice.cancel();
+    S.idx++;
+    if (S.idx >= S.level.rounds.length) finishLevel(); else playRound();
+  }
+
+  async function finishLevel() {
+    const lv = S.level; const sess = ++S.session;
+    Mic.release();
+    const n = lv.rounds.length;
+    const stars = S.firstCount >= n ? 3 : S.firstCount >= n - 2 ? 2 : 1;
+    const before = data.stars[lv.id] || 0;
+    data.stars[lv.id] = Math.max(before, stars); save();
+
+    const st = stageOf(data.coins);
+    const prevStage = stageOf(data.coins - S.firstCount);
+    $('#res-pet').textContent = st.e;
+    $('#res-title').textContent = stars === 3 ? 'Perfect!' : stars === 2 ? 'Great job!' : 'Good try!';
+    $('#res-sub').textContent = `第一次就答对 ${S.firstCount}/${n} 题，赚到 ${S.firstCount} ⭐`;
+    const spans = document.querySelectorAll('#res-stars span');
+    spans.forEach((s) => s.classList.remove('on'));
+    const evo = $('#res-evolve');
+    evo.hidden = st === prevStage;
+    if (st !== prevStage) evo.textContent = `🎉 Dodo 长大了！${prevStage.e} ➜ ${st.e} ${st.cn}`;
+    show('result');
+    Sfx.win(); confetti();
+    for (let i = 0; i < stars; i++) { await wait(300); spans[i].classList.add('on'); }
+    if (sess !== S.session) return;
+    if (await petSay(stars === 3 ? 'Perfect! You are amazing!' : 'You did it! Great job!') && st !== prevStage) {
+      await petSay(`Look! I'm growing! I'm a ${st.en.toLowerCase()} now!`);
+    }
+  }
+
+  // ---------------------------------------------------------------- parent panel
+
+  function renderParent() {
+    document.querySelectorAll('#seg-mode button').forEach((b) => b.classList.toggle('on', b.dataset.mode === data.mode));
+    document.querySelectorAll('#seg-rate button').forEach((b) => b.classList.toggle('on', Number(b.dataset.rate) === data.rate));
+    const yes = (v) => (v ? '✅' : '❌');
+    $('#caps').innerHTML = [
+      `${yes('speechSynthesis' in window)} 英文朗读${Voice.voice ? `（${Voice.voice.name}）` : ''}`,
+      `${yes(!!Mic.SR && !Mic.asrBroken)} 在线语音识别${Mic.asrBroken ? '（本次连接失败）' : ''}`,
+      `${yes(Mic.canRecord() && !Mic.denied)} 麦克风录音`,
+      `当前使用：<b>${{ asr: '智能识别', record: '录音模式', tap: '点击模式' }[Mic.mode()]}</b>`,
+    ].join('<br>');
+  }
+
+  // ---------------------------------------------------------------- wiring
+
+  $('#btn-start').onclick = () => {
+    Sfx.ensure(); Sfx.pop();
+    Voice.say(''); // unlocks speech on iOS, which requires a user gesture
+    renderMap();
+    setTimeout(() => petSay(data.coins ? "Hi! I'm Dodo! Let's play again!" : "Hi! I'm Dodo! I'm in this egg. Help me grow, please!"), 250);
+  };
+  $('#map-pet').onclick = () => { Sfx.pop(); const p = $('#map-pet'); p.classList.remove('jump'); void p.offsetWidth; p.classList.add('jump'); petSay(pick(PET_TALK)); };
+  $('#game-pet').onclick = () => { if (S.level) petSay(cur().say); };
+  $('#btn-replay').onclick = () => { Sfx.pop(); petSay(cur().say); };
+  $('#btn-slow').onclick = () => { Sfx.pop(); petSay(cur().say, 0.6); };
+  $('#btn-quit').onclick = () => { S.session++; Voice.cancel(); Mic.stop(); Mic.release(); renderMap(); };
+  $('#btn-again').onclick = () => { Sfx.pop(); startLevel(S.level.id); };
+  $('#btn-map').onclick = () => { Sfx.pop(); S.session++; Voice.cancel(); renderMap(); };
+
+  $('#btn-parent').onclick = () => { renderParent(); $('#modal').classList.add('on'); };
+  $('#btn-close').onclick = () => { $('#modal').classList.remove('on'); };
+  $('#modal').onclick = (e) => { if (e.target.id === 'modal') $('#modal').classList.remove('on'); };
+  $('#seg-mode').onclick = (e) => { const m = e.target.dataset.mode; if (!m) return; data.mode = m; Mic.asrBroken = false; Mic.denied = false; save(); renderParent(); };
+  $('#seg-rate').onclick = (e) => { const r = e.target.dataset.rate; if (!r) return; data.rate = Number(r); save(); renderParent(); Voice.say('Hello! This is my voice.'); };
+  $('#btn-reset').onclick = () => {
+    if (!confirm('确定要清空所有星星和关卡进度吗？')) return;
+    data.coins = 0; data.stars = {}; save(); renderParent(); renderMap();
+  };
+
+  document.addEventListener('visibilitychange', () => { if (document.hidden) Voice.cancel(); });
+
+  Voice.init();
+  renderPet(); updateCoins();
+})();
+</script>
+</body>
+</html>
